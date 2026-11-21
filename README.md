@@ -2,6 +2,8 @@
 
 Verify that a PostgreSQL reporting query and its Spark SQL candidate agree with the business rules for synthetic payments. Verification covers the declared fixtures and engine settings.
 
+Watch the [2:39 captioned demo](docs/demo.mp4) for the duplicate-row regression, the local-day repair and the case that stops for review.
+
 ## Run it
 
 Use Bash on Linux or WSL2 with Docker, Docker Compose v2 and `uv` 0.13.9. Run these commands from the repository root.
@@ -37,4 +39,4 @@ The evaluator writes `artifacts/eval/results.jsonl`, `summary.json` and `report.
 3. Freeze the SQL hash when the repair fixture passes. Run the same candidate on the two additional fixtures. The comparator checks typed keys, full row multiplicity or exact order, as declared by the case contract.
 4. Publish an evidence packet. A human reviewer decides whether to use the SQL outside the fixture environment.
 
-The [reviewer guide](docs/runbook.md) covers exit codes, scoring and live mode. The [architecture notes](docs/architecture.md) explain the isolation and assumptions.
+The [reviewer guide](docs/runbook.md) covers exit codes, scoring and live mode. The [architecture notes](docs/architecture.md) explain the isolation and assumptions. The [example results](docs/example-results/README.md) include the benchmarks and problems found during testing.
