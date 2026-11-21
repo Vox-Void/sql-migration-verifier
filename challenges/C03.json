@@ -1,0 +1,7 @@
+{
+  "case_id": "Q03",
+  "expected": "MISMATCH",
+  "purpose": "UTC dates used in merchant-local reporting",
+  "fixture": "repair",
+  "candidate": "SELECT m.merchant_id, CAST(c.captured_at_utc AS DATE) AS local_day,\n       CAST(SUM(c.amount) AS DECIMAL(18,2)) AS captured\nFROM captures c JOIN authorisations a ON c.auth_id = a.auth_id JOIN merchants m ON a.merchant_id = m.merchant_id\nGROUP BY m.merchant_id, CAST(c.captured_at_utc AS DATE)"
+}

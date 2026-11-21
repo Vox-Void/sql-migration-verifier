@@ -1,0 +1,26 @@
+{
+  "purpose": "Preserve a one-microsecond boundary and equivalent UTC instants expressed with offsets",
+  "relations": [
+    "captures"
+  ],
+  "fields": [
+    [
+      "capture_id",
+      "text"
+    ],
+    [
+      "captured_at_utc",
+      "instant"
+    ]
+  ],
+  "keys": [
+    "capture_id"
+  ],
+  "mode": "keyed",
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000
+}

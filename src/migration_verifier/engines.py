@@ -9,9 +9,34 @@ from typing import Any
 from uuid import uuid4
 
 import psycopg
+from psycopg import sql
+
+from migration_verifier.compare import Result
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = 1
+POSTGRES_TYPES = {
+    16: "boolean",
+    20: "integer",
+    21: "integer",
+    23: "integer",
+    25: "text",
+    1043: "text",
+    1082: "date",
+    1114: "local_timestamp",
+    1184: "instant",
+    700: "float",
+    701: "double",
+}
+SPARK_TYPES = {
+    "string": "text",
+    "bigint": "integer",
+    "int": "integer",
+    "smallint": "integer",
+    "tinyint": "integer",
+    "timestamp": "instant",
+    "timestamp_ntz": "local_timestamp",
+}
 
 
 class EngineError(RuntimeError):
@@ -39,6 +64,47 @@ def source_connection(port: int, *, owner: bool = False) -> psycopg.Connection[A
         connect_timeout=5,
         user="fixture_owner" if owner else "migration_reader",
         password="local-fixture-only" if owner else "local-reader-only",
+    )
+
+
+def postgres_query(port: int, fixture_id: str, query: str, cap: int) -> Result:
+    with (
+        source_connection(port) as connection,
+        connection.cursor(name="migration_result") as cursor,
+    ):
+        connection.execute("SET TRANSACTION READ ONLY")
+        connection.execute("SET LOCAL statement_timeout = '5s'")
+        connection.execute("SET LOCAL timezone = 'UTC'")
+        connection.execute(
+            sql.SQL("SET LOCAL search_path TO {}, pg_catalog").format(
+                sql.Identifier(f"fixture_{fixture_id}")
+            )
+        )
+        cursor.execute(query)
+        rows = cursor.fetchmany(cap + 1)
+        if len(rows) > cap:
+            raise EngineError("SOURCE_ROW_LIMIT")
+        if cursor.description is None:
+            raise EngineError("SOURCE_SCHEMA_MISSING")
+        columns = tuple(
+            (
+                column.name,
+                f"decimal({column.precision},{column.scale})"
+                if column.type_code == 1700
+                else POSTGRES_TYPES.get(column.type_code, f"oid:{column.type_code}"),
+            )
+            for column in cursor.description
+        )
+        return Result(columns, [list(record) for record in rows])
+
+
+def spark_result(document: dict[str, Any]) -> Result:
+    return Result(
+        tuple(
+            (column["name"], SPARK_TYPES.get(column["type"], column["type"]))
+            for column in document["columns"]
+        ),
+        document["rows"],
     )
 
 

@@ -1,0 +1,24 @@
+{
+  "purpose": "Preserve one aggregate row for empty input, with a zero count and null sum",
+  "relations": [
+    "authorisations"
+  ],
+  "fields": [
+    [
+      "authorisation_count",
+      "integer"
+    ],
+    [
+      "total",
+      "decimal(18,2)",
+      true
+    ]
+  ],
+  "mode": "bag",
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000
+}

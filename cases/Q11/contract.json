@@ -1,0 +1,23 @@
+{
+  "purpose": "Combine overlapping settlement streams without losing multiplicity",
+  "relations": [
+    "settlement_events"
+  ],
+  "fields": [
+    [
+      "source_ref",
+      "text"
+    ],
+    [
+      "net_amount",
+      "decimal(18,2)"
+    ]
+  ],
+  "mode": "bag",
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000
+}

@@ -19,3 +19,15 @@ jobs:
         run: pipx install uv==0.13.9
       - name: Build and verify both runtimes
         run: ./scripts/dev bootstrap
+      - name: Check the verifier and both engines
+        run: ./scripts/dev test
+      - name: Produce the demo and benchmark
+        run: |
+          ./scripts/dev demo
+          ./scripts/dev eval
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: migration-evidence
+          path: artifacts/

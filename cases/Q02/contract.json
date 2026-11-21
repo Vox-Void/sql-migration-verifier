@@ -1,0 +1,27 @@
+{
+  "purpose": "Net captured amount without refund join fan-out",
+  "relations": [
+    "captures",
+    "refunds"
+  ],
+  "fields": [
+    [
+      "capture_id",
+      "text"
+    ],
+    [
+      "net_amount",
+      "decimal(18,2)"
+    ]
+  ],
+  "keys": [
+    "capture_id"
+  ],
+  "mode": "keyed",
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000
+}

@@ -1,0 +1,24 @@
+{
+  "purpose": "Preserve duplicate events and keep null, empty text and literal NULL distinct",
+  "relations": [
+    "settlement_events"
+  ],
+  "fields": [
+    [
+      "source_ref",
+      "text",
+      true
+    ],
+    [
+      "net_amount",
+      "decimal(18,2)"
+    ]
+  ],
+  "mode": "bag",
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000
+}

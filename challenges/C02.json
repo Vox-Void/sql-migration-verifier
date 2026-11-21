@@ -1,0 +1,7 @@
+{
+  "case_id": "Q02",
+  "expected": "MISMATCH",
+  "purpose": "Repeating capture amounts through a refund fan-out",
+  "fixture": "repair",
+  "candidate": "SELECT c.capture_id, CAST(SUM(c.amount) - COALESCE(SUM(r.amount), 0.00) AS DECIMAL(18,2)) AS net_amount\nFROM captures c LEFT JOIN refunds r ON r.capture_id = c.capture_id GROUP BY c.capture_id"
+}
