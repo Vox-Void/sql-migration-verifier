@@ -29,7 +29,7 @@ services:
       - /tmp:rw,nosuid,nodev,size=512m,mode=1777
     cpus: 2.0
     mem_limit: 2g
-    pids_limit: 192
+    pids_limit: 512
     stdin_open: true
 volumes:
   source-database:

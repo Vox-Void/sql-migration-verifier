@@ -98,6 +98,20 @@ FUNCTIONS = frozenset(
         "FROM_UTC_TIMESTAMP",
     ]
 )
+TYPES = frozenset(
+    {
+        "BIGINT",
+        "BOOLEAN",
+        "DATE",
+        "DECIMAL",
+        "INT",
+        "SMALLINT",
+        "TEXT",
+        "TIMESTAMP",
+        "TIMESTAMPTZ",
+        "VARCHAR",
+    }
+)
 
 
 class PolicyError(ValueError):
@@ -109,6 +123,7 @@ class Case:
     case_id: str
     purpose: str
     relations: tuple[str, ...]
+    functions: frozenset[str]
     fixtures: tuple[str, ...]
     row_cap: int
     contract: Contract
@@ -132,6 +147,7 @@ def load_case(case_id: str) -> Case:
     names = {field.name for field in contract.fields}
     if (
         set(raw["relations"]) - SCHEMAS.keys()
+        or set(raw["functions"]) - FUNCTIONS
         or tuple(raw["fixtures"]) != FIXTURES
         or not 1 <= raw["row_cap"] <= 10000
         or not names
@@ -151,6 +167,7 @@ def load_case(case_id: str) -> Case:
         case_id,
         raw["purpose"],
         tuple(raw["relations"]),
+        frozenset(raw["functions"]),
         tuple(raw["fixtures"]),
         raw["row_cap"],
         contract,
@@ -175,10 +192,14 @@ def gate(query: str, case: Case, dialect: str) -> exp.Expression:
     for node in parsed.walk():
         if isinstance(node, exp.Func):
             name = node.name.upper() if isinstance(node, exp.Anonymous) else node.sql_name()
-            if name not in FUNCTIONS:
+            if name not in case.functions:
                 raise PolicyError("FUNCTION_NOT_ALLOWED")
         if type(node).__name__ not in SHAPES:
             raise PolicyError("UNSUPPORTED_SQL_SHAPE")
+        if isinstance(node, exp.DataType) and getattr(node.this, "name", "") not in TYPES:
+            raise PolicyError("TYPE_NOT_ALLOWED")
+        if isinstance(node, exp.Select) and len(node.expressions) > 32:
+            raise PolicyError("PROJECTION_LIMIT")
         if isinstance(node, exp.Star) and not isinstance(node.parent, exp.Count):
             raise PolicyError("STAR_PROJECTION")
         if isinstance(node, (exp.Limit, exp.Offset)) and (

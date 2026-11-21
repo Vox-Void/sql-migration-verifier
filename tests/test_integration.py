@@ -18,18 +18,21 @@ def runtime():
 def test_reviewed_reference_meets_all_independent_oracles(runtime, case_id):
     case = load_case(case_id)
     outcome = verify(runtime, case, "baseline", initial_sql=case.reference)
-    assert outcome["verdict"] == "VERIFIED", outcome
+    assert outcome["verdict"] == "VERIFIED", (outcome["reason_code"], outcome["target_attempts"])
     assert outcome["target_executions"] == 3
 
 
 @pytest.mark.parametrize("identifier", [f"C{number:02}" for number in range(1, 9)])
 def test_known_bad_candidate_is_never_approved(runtime, identifier):
     outcome = challenge(runtime, identifier)
-    assert outcome["verdict"] == outcome["expected_verdict"], outcome
+    assert outcome["verdict"] == outcome["expected_verdict"], (
+        outcome["reason_code"],
+        outcome["target_attempts"],
+    )
     if identifier in {"C05", "C06", "C08"}:
         assert outcome["target_executions"] == 0
     if identifier == "C07":
-        assert outcome["reason_code"] == "ROW_LIMIT"
+        assert outcome["reason_code"] == "ROW_LIMIT", outcome["target_attempts"]
         assert not outcome["target_attempts"][0]["complete"]
     if identifier == "C01":
         comparison = outcome["target_attempts"][0]["comparison"]

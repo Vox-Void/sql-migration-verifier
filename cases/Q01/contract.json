@@ -33,5 +33,6 @@
     "late",
     "ties"
   ],
-  "row_cap": 10000
+  "row_cap": 10000,
+  "functions": ["CAST","SUM","TRY_CAST"]
 }

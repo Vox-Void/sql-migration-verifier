@@ -41,5 +41,6 @@
     "late",
     "ties"
   ],
-  "row_cap": 10000
+  "row_cap": 10000,
+  "functions": ["ROW_NUMBER"]
 }

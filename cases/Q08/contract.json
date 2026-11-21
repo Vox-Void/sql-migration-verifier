@@ -24,5 +24,6 @@
     "late",
     "ties"
   ],
-  "row_cap": 10000
+  "row_cap": 10000,
+  "functions": ["CAST","COALESCE","NULLIF","SUM","TRY_CAST"]
 }

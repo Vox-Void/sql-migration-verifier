@@ -113,6 +113,7 @@ def check_target(
             **document,
             "verdict": "REVIEW_REQUIRED",
             "reason": result["status"],
+            "detail": result.get("error"),
             "complete": False,
         }
     diff = compare(oracle, spark_result(result), case.contract)
