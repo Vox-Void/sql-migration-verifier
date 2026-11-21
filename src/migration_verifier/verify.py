@@ -19,7 +19,7 @@ from migration_verifier.engines import (
     postgres_query,
     spark_result,
 )
-from migration_verifier.fixtures import SCHEMAS, digest, packets
+from migration_verifier.fixtures import SCHEMAS, check_manifest, digest, packets
 from migration_verifier.oracle import expected
 from migration_verifier.policy import Case, PolicyError, gate, translate
 from migration_verifier.repair import PROMPT_VERSION, propose
@@ -29,6 +29,7 @@ EXIT_CODES = {"VERIFIED": 0, "MISMATCH": 2, "REVIEW_REQUIRED": 3, "ERROR": 4}
 
 class Runtime:
     def __init__(self) -> None:
+        check_manifest()
         self.port = postgres_port()
         self.worker: SparkWorker | None = None
         self.executions = 0

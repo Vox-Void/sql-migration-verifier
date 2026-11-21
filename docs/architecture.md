@@ -21,6 +21,7 @@ flowchart LR
 ## Data and comparator
 
 - The source database and Spark load the same canonical fixture values through separate adapters. The fixture contains ZAR and USD, explicit decimal amounts, duplicate settlements, and date and timestamp boundaries in Johannesburg and New York.
+- The local-day report groups by currency as well as merchant and date. The first draft omitted currency, which added ZAR and USD amounts for the same merchant. The regression checks both rows directly on Spark.
 - The committed base answers were calculated by hand. A small Python oracle calculates expected rows for the two fixture variants from the underlying data and business rules. It does its own sorting, grouping and arithmetic independently of the SQL.
 - The case contract specifies field names, order, logical types and where nulls are permitted. The comparator checks the schema even for an empty result and encodes null separately from text. The exact decimal path rejects floats and values that require rounding during comparison.
 - A keyed comparison enforces non-null unique keys. A bag comparison counts full rows, including duplicates. An ordered comparison retains the engine's result sequence and requires the declared sort and tie-break at the SQL boundary.

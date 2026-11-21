@@ -31,12 +31,11 @@ def reference(case_id: str, fixture_id: str) -> list[list[Any]]:
         for _, auth_id, value, amount in captures:
             _, merchant, _, _, currency, _ = auth_by_id[auth_id]
             timestamp = datetime.fromisoformat(value)
-            key: tuple[str, ...]
             if case_id == "Q03":
-                key = (merchant, timestamp.astimezone(zones[merchant]).date().isoformat())
+                day = timestamp.astimezone(zones[merchant]).date().isoformat()
             else:
-                key = (merchant, currency, timestamp.date().isoformat())
-            totals[key] += Decimal(amount)
+                day = timestamp.date().isoformat()
+            totals[(merchant, currency, day)] += Decimal(amount)
         return [[*key, amount] for key, amount in totals.items()]
     if case_id == "Q02":
         refunds: defaultdict[str, Decimal] = defaultdict(Decimal)

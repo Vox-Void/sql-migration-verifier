@@ -94,7 +94,20 @@ def packets(name: str) -> dict[str, Any]:
     }
 
 
+def check_manifest() -> dict[str, Any]:
+    manifest = json.loads((ROOT / "fixtures/manifest.json").read_bytes())
+    datasets: dict[str, Any] = manifest["datasets"]
+    if manifest["version"] != 1 or datasets.keys() != {*FIXTURES, "row_limit"}:
+        raise EngineError("The fixture manifest does not declare the expected datasets.")
+    for fixture_id, expected in datasets.items():
+        counts = {table: len(rows) for table, rows in fixture_rows(fixture_id).items()}
+        if counts != expected["rows"] or digest(packets(fixture_id)) != expected["digest"]:
+            raise EngineError(f"Fixture {fixture_id} differs from its committed manifest.")
+    return datasets
+
+
 def seed_postgres(port: int) -> dict[str, Any]:
+    datasets = check_manifest()
     convert: dict[str, Callable[[str], object]] = {
         "instant": datetime.fromisoformat,
         "decimal": Decimal,
@@ -157,14 +170,4 @@ def seed_postgres(port: int) -> dict[str, Any]:
                     encoded,
                 )
                 cursor.execute(sql.SQL("GRANT SELECT ON {} TO migration_reader").format(full_name))
-    return {
-        "postgres": "17.9",
-        "timezone": "UTC",
-        "fixtures": {
-            fixture_id: {
-                "digest": digest(packets(fixture_id)),
-                "counts": {name: len(rows) for name, rows in fixture_rows(fixture_id).items()},
-            }
-            for fixture_id in (*FIXTURES, "row_limit")
-        },
-    }
+    return {"postgres": "17.9", "timezone": "UTC", "fixtures": datasets}

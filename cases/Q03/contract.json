@@ -1,5 +1,5 @@
 {
-  "purpose": "Capture totals by merchant-local day across local midnight and daylight saving changes",
+  "purpose": "Capture totals by merchant, currency and local day across midnight and daylight saving changes",
   "relations": [
     "captures",
     "authorisations",
@@ -8,6 +8,10 @@
   "fields": [
     [
       "merchant_id",
+      "text"
+    ],
+    [
+      "currency",
       "text"
     ],
     [
@@ -21,6 +25,7 @@
   ],
   "keys": [
     "merchant_id",
+    "currency",
     "local_day"
   ],
   "mode": "keyed",

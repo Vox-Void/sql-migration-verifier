@@ -52,6 +52,16 @@ def test_recorded_local_day_repair_is_frozen_across_held_out_fixtures(runtime):
     assert stable_record(first) == stable_record(repeat)
 
 
+def test_same_merchant_and_local_day_keep_currencies_separate(runtime):
+    case = load_case("Q03")
+    reply = runtime.target(case.reference, "repair", case.row_cap)
+    selected = [row for row in reply["rows"] if row[0] == "M1" and row[2] == "2026-01-08"]
+    assert sorted(selected) == [
+        ["M1", "USD", "2026-01-08", "60.75"],
+        ["M1", "ZAR", "2026-01-08", "31.00"],
+    ]
+
+
 def test_source_role_is_restricted(runtime):
     with source_connection(runtime.port) as connection:
         settings = connection.execute("SHOW transaction_read_only").fetchone()
