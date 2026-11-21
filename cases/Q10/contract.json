@@ -1,0 +1,28 @@
+{
+  "purpose": "Match settlement references with null-safe equality",
+  "relations": [
+    "settlement_events"
+  ],
+  "fields": [
+    [
+      "event_id",
+      "text"
+    ],
+    [
+      "matched_event_id",
+      "text",
+      true
+    ]
+  ],
+  "keys": [
+    "event_id"
+  ],
+  "mode": "keyed",
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000,
+  "functions": ["AND"]
+}

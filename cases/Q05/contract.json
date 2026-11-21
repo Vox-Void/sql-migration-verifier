@@ -1,0 +1,46 @@
+{
+  "purpose": "Return the three latest captures per merchant with an explicit capture ID tie-break",
+  "relations": [
+    "captures",
+    "authorisations"
+  ],
+  "fields": [
+    [
+      "merchant_id",
+      "text"
+    ],
+    [
+      "capture_id",
+      "text"
+    ],
+    [
+      "captured_at_utc",
+      "instant"
+    ]
+  ],
+  "mode": "ordered",
+  "order": [
+    [
+      "merchant_id",
+      false,
+      false
+    ],
+    [
+      "captured_at_utc",
+      true,
+      false
+    ],
+    [
+      "capture_id",
+      false,
+      false
+    ]
+  ],
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000,
+  "functions": ["ROW_NUMBER"]
+}

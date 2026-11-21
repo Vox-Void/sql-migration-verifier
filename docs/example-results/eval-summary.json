@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "run_at": "2026-11-21T15:17:08.962245+00:00",
+  "engines": {
+    "postgres": "17.9",
+    "spark": "4.0.1",
+    "psycopg": "3.3.3",
+    "java": "17.0.18",
+    "timezone": "UTC",
+    "spark_ansi": true,
+    "spark_timestamp_type": "TIMESTAMP_LTZ",
+    "postgres_image": "17.9-bookworm@sha256:47f917f7409eacd22fc5dfb1dee634e1b55cf0c01d1a7eb701be2227a03e0641",
+    "worker_base_images": [
+      "eclipse-temurin:17.0.18_8-jre-jammy@sha256:642d45bf22d3cb9face159181732ed9fa70873b2681e50445eff7d4785c176bb",
+      "ghcr.io/astral-sh/uv:0.13.9",
+      "python:3.11.15-slim-bookworm@sha256:d29f48a31a8b408ed19272ca1e7b10ebae13b240a27e862d3d4217c528e2e0c3"
+    ],
+    "revision": "747fd866d7f7a551c8e016a35346c5ddfffa0209",
+    "dirty": false
+  },
+  "arms": {
+    "baseline": {
+      "cases": 12,
+      "verified": 12,
+      "mismatch": 0,
+      "review_required": 0,
+      "error": 0
+    },
+    "recorded": {
+      "cases": 12,
+      "verified": 12,
+      "mismatch": 0,
+      "review_required": 0,
+      "error": 0
+    }
+  },
+  "recovered": [],
+  "baseline_non_passes": 0,
+  "challenge_count": 8,
+  "false_approvals": 0,
+  "content_digest": "b5138dae8f479b908d691e8e6f14b4b8ba3c14fb828080031fcaa25d52cbb08c"
+}

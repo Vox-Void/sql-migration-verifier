@@ -1,0 +1,38 @@
+{
+  "purpose": "Captured amount by merchant, currency and UTC day",
+  "relations": [
+    "captures",
+    "authorisations"
+  ],
+  "fields": [
+    [
+      "merchant_id",
+      "text"
+    ],
+    [
+      "currency",
+      "text"
+    ],
+    [
+      "utc_day",
+      "date"
+    ],
+    [
+      "captured",
+      "decimal(18,2)"
+    ]
+  ],
+  "keys": [
+    "merchant_id",
+    "currency",
+    "utc_day"
+  ],
+  "mode": "keyed",
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000,
+  "functions": ["CAST","SUM","TRY_CAST"]
+}

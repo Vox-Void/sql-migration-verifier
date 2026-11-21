@@ -1,0 +1,7 @@
+{
+  "case_id": "Q11",
+  "expected": "MISMATCH",
+  "purpose": "Equal row count, distinct membership and money with the wrong multiplicities",
+  "fixture": "repair",
+  "candidate": "SELECT source_ref, CAST(net_amount AS DECIMAL(18,2)) AS net_amount FROM settlement_events WHERE event_id IN ('E1', 'E3')\nUNION ALL\nSELECT source_ref, CAST(net_amount AS DECIMAL(18,2)) AS net_amount FROM settlement_events WHERE event_id = 'E3'"
+}

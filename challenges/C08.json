@@ -1,0 +1,8 @@
+{
+  "case_id": "Q02",
+  "expected": "ERROR",
+  "purpose": "Both engines are offered the same faulty net calculation",
+  "fixture": "repair",
+  "candidate": "SELECT capture_id, CAST(amount AS DECIMAL(18,2)) AS net_amount FROM captures",
+  "source": "SELECT capture_id, CAST(amount AS DECIMAL(18,2)) AS net_amount FROM captures"
+}

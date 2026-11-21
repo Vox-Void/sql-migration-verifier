@@ -1,0 +1,29 @@
+{
+  "purpose": "Calculate a decimal capture ratio with null for a zero authorisation",
+  "relations": [
+    "authorisations",
+    "captures"
+  ],
+  "fields": [
+    [
+      "auth_id",
+      "text"
+    ],
+    [
+      "ratio",
+      "decimal(18,4)",
+      true
+    ]
+  ],
+  "keys": [
+    "auth_id"
+  ],
+  "mode": "keyed",
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000,
+  "functions": ["CAST","COALESCE","NULLIF","SUM","TRY_CAST"]
+}

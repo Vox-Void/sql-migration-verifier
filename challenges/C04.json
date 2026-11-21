@@ -1,0 +1,7 @@
+{
+  "case_id": "Q04",
+  "expected": "MISMATCH",
+  "purpose": "Null reference silently becomes empty text",
+  "fixture": "repair",
+  "candidate": "SELECT COALESCE(source_ref, '') AS source_ref, CAST(net_amount AS DECIMAL(18,2)) AS net_amount\nFROM settlement_events WHERE merchant_id = 'M1'"
+}

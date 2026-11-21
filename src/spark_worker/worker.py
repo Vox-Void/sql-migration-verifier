@@ -2,11 +2,14 @@
 
 import json
 import os
+import re
 import sys
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
+from py4j.protocol import Py4JJavaError
+from pyspark.errors import PySparkException
 from pyspark.sql import SparkSession
 from pyspark.sql.types import (
     BooleanType,
@@ -62,6 +65,18 @@ def encode(value: Any) -> Any:
     return value
 
 
+def issue(error: Exception) -> str:
+    if isinstance(error, PySparkException):
+        condition = error.getCondition() or "SPARK_ERROR"
+        if re.fullmatch(r"[A-Z0-9_.]{1,80}", condition):
+            return condition
+    if isinstance(error, Py4JJavaError):
+        name = error.java_exception.getClass().getSimpleName()
+        if re.fullmatch(r"[A-Za-z0-9_]{1,80}", name):
+            return name
+    return type(error).__name__
+
+
 def main() -> None:
     # Reserve the original stdout for records. JVM and Python diagnostics go to stderr.
     with os.fdopen(os.dup(sys.stdout.fileno()), "w", encoding="utf-8", buffering=1) as protocol:
@@ -72,6 +87,9 @@ def main() -> None:
             .config("spark.ui.enabled", "false")
             .config("spark.ui.showConsoleProgress", "false")
             .config("spark.sql.shuffle.partitions", "2")
+            .config("spark.sql.adaptive.enabled", "false")
+            .config("spark.rpc.io.serverThreads", "2")
+            .config("spark.rpc.io.clientThreads", "2")
             .config("spark.sql.ansi.enabled", "true")
             .config("spark.sql.timestampType", "TIMESTAMP_LTZ")
             .config("spark.sql.session.timeZone", "UTC")
@@ -88,6 +106,9 @@ def main() -> None:
                         "version": VERSION,
                         "status": "READY",
                         "spark": spark.version,
+                        "java": spark.sparkContext._jvm.java.lang.System.getProperty(
+                            "java.version"
+                        ),
                         "timezone": "UTC",
                     }
                 ),
@@ -116,7 +137,7 @@ def main() -> None:
                         }
                     )
                 except Exception as error:
-                    response = {"status": "QUERY_ERROR", "error": type(error).__name__}
+                    response = {"status": "QUERY_ERROR", "error": issue(error)}
                 print(
                     json.dumps({"version": VERSION, **response}, allow_nan=False),
                     file=protocol,

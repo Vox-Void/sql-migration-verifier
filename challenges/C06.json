@@ -1,0 +1,7 @@
+{
+  "case_id": "Q01",
+  "expected": "REVIEW_REQUIRED",
+  "purpose": "Target reads a relation outside the case scope",
+  "fixture": "repair",
+  "candidate": "SELECT merchant_id, settlement_tz FROM merchants"
+}

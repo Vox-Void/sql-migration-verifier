@@ -1,0 +1,37 @@
+{
+  "purpose": "Find the latest revision by business reference at a declared cutoff",
+  "relations": [
+    "settlement_events",
+    "migration_params"
+  ],
+  "fields": [
+    [
+      "merchant_id",
+      "text"
+    ],
+    [
+      "source_ref",
+      "text"
+    ],
+    [
+      "event_id",
+      "text"
+    ],
+    [
+      "net_amount",
+      "decimal(18,2)"
+    ]
+  ],
+  "keys": [
+    "merchant_id",
+    "source_ref"
+  ],
+  "mode": "keyed",
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000,
+  "functions": ["AND","CAST","ROW_NUMBER","TRY_CAST"]
+}

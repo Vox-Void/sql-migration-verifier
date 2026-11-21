@@ -1,0 +1,7 @@
+{
+  "case_id": "Q05",
+  "expected": "REVIEW_REQUIRED",
+  "purpose": "Ordered query omits the capture ID tie-break",
+  "fixture": "repair",
+  "candidate": "WITH ranked AS (\n    SELECT a.merchant_id, c.capture_id, c.captured_at_utc,\n           ROW_NUMBER() OVER (PARTITION BY a.merchant_id ORDER BY c.captured_at_utc DESC, c.capture_id) AS ranking\n    FROM captures c JOIN authorisations a ON c.auth_id = a.auth_id\n)\nSELECT merchant_id, capture_id, captured_at_utc\nFROM ranked WHERE ranking <= 3\nORDER BY merchant_id ASC NULLS LAST, captured_at_utc DESC NULLS LAST"
+}

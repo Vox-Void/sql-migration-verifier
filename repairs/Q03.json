@@ -1,0 +1,5 @@
+{
+  "candidate_sql": "WITH merchant_captures AS (\n    SELECT m.merchant_id, a.currency, CAST(FROM_UTC_TIMESTAMP(c.captured_at_utc, m.settlement_tz) AS DATE) AS local_day, c.amount\n    FROM captures AS c\n    JOIN authorisations AS a ON a.auth_id = c.auth_id\n    JOIN merchants AS m ON m.merchant_id = a.merchant_id\n)\nSELECT merchant_id, currency, local_day, CAST(SUM(amount) AS DECIMAL(18,2)) AS captured\nFROM merchant_captures\nGROUP BY merchant_id, currency, local_day",
+  "rationale": "Convert the UTC instant with the merchant's IANA time zone before casting to a date and aggregating.",
+  "assumptions": ["Spark session and JVM use UTC", "The canonical fixture contains an IANA zone for every merchant"]
+}

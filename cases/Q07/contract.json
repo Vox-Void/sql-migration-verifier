@@ -1,0 +1,28 @@
+{
+  "purpose": "Approved authorisations that have no capture",
+  "relations": [
+    "authorisations",
+    "captures"
+  ],
+  "fields": [
+    [
+      "auth_id",
+      "text"
+    ],
+    [
+      "merchant_id",
+      "text"
+    ]
+  ],
+  "keys": [
+    "auth_id"
+  ],
+  "mode": "keyed",
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000,
+  "functions": ["AND","EXISTS"]
+}

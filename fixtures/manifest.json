@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "datasets": {
+    "repair": {
+      "purpose": "Public fixture for baseline comparison and repair diagnostics",
+      "digest": "10920703b664cf439615bc20a9449ada4463f51d02cd11ceecabf8c4d2afb9a6",
+      "rows": {
+        "merchants": 2,
+        "authorisations": 7,
+        "captures": 7,
+        "refunds": 3,
+        "settlement_events": 9,
+        "migration_params": 1
+      }
+    },
+    "late": {
+      "purpose": "Later cutoff, extra refund and microsecond timestamp",
+      "digest": "8cbf7fe77a3ac64a090e33d187ae97d4b68341e882027ba216bbee465befd511",
+      "rows": {
+        "merchants": 2,
+        "authorisations": 7,
+        "captures": 8,
+        "refunds": 4,
+        "settlement_events": 9,
+        "migration_params": 1
+      }
+    },
+    "ties": {
+      "purpose": "Same-time captures and settlement revisions, plus uncaptured approval",
+      "digest": "a9874707ccd2b3314bed5e1fa98c37c6479322bcb1186da62143dfe4099d596f",
+      "rows": {
+        "merchants": 2,
+        "authorisations": 8,
+        "captures": 8,
+        "refunds": 3,
+        "settlement_events": 10,
+        "migration_params": 1
+      }
+    },
+    "row_limit": {
+      "purpose": "101 settlement events for the target row-budget challenge",
+      "digest": "2e2f6d3e5817881c597b3d0ecd3997ce62ebdc603edd5218352341dc737fb4dc",
+      "rows": {
+        "merchants": 2,
+        "authorisations": 7,
+        "captures": 7,
+        "refunds": 3,
+        "settlement_events": 101,
+        "migration_params": 1
+      }
+    }
+  }
+}

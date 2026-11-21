@@ -1,0 +1,7 @@
+{
+  "case_id": "Q04",
+  "expected": "REVIEW_REQUIRED",
+  "purpose": "Cross join exceeds the target row limit",
+  "fixture": "row_limit",
+  "candidate": "SELECT a.source_ref, CAST(a.net_amount AS DECIMAL(18,2)) AS net_amount\nFROM settlement_events a CROSS JOIN settlement_events b"
+}

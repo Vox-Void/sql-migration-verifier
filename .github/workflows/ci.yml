@@ -19,3 +19,17 @@ jobs:
         run: pipx install uv==0.13.9
       - name: Build and verify both runtimes
         run: ./scripts/dev bootstrap
+      - name: Check the verifier and both engines
+        run: ./scripts/dev test
+      - name: Produce the demo and benchmark
+        run: |
+          ./scripts/dev demo
+          ./scripts/dev eval
+          ./scripts/dev eval --out artifacts/eval-repeat
+          python3 -c 'import json; from pathlib import Path; reports = [json.loads(Path(p).read_bytes()) for p in ("artifacts/eval/summary.json", "artifacts/eval-repeat/summary.json")]; assert reports[0]["content_digest"] == reports[1]["content_digest"]'
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: migration-evidence
+          path: artifacts/

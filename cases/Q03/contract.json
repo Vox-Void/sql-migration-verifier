@@ -1,0 +1,39 @@
+{
+  "purpose": "Capture totals by merchant, currency and local day across midnight and daylight saving changes",
+  "relations": [
+    "captures",
+    "authorisations",
+    "merchants"
+  ],
+  "fields": [
+    [
+      "merchant_id",
+      "text"
+    ],
+    [
+      "currency",
+      "text"
+    ],
+    [
+      "local_day",
+      "date"
+    ],
+    [
+      "captured",
+      "decimal(18,2)"
+    ]
+  ],
+  "keys": [
+    "merchant_id",
+    "currency",
+    "local_day"
+  ],
+  "mode": "keyed",
+  "fixtures": [
+    "repair",
+    "late",
+    "ties"
+  ],
+  "row_cap": 10000,
+  "functions": ["CAST","SUM","TRY_CAST","FROM_UTC_TIMESTAMP"]
+}
