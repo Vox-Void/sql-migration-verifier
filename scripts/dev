@@ -11,6 +11,7 @@ fi
 export PYTHONPATH="$PWD/src"
 case "$command" in
   bootstrap)
+    # Check Docker, sync dependencies and start the two engines.
     docker compose version
     docker info --format '{{.ServerVersion}}'
     mkdir -p artifacts
@@ -21,6 +22,7 @@ case "$command" in
     uv run --locked python -m migration_verifier.cli bootstrap
     ;;
   test)
+    # Check source formatting, lint and types before running pytest.
     uv run --locked ruff format --check src tests
     uv run --locked ruff check src tests
     uv run --locked mypy

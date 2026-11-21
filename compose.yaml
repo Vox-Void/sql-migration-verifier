@@ -7,6 +7,7 @@ services:
       POSTGRES_USER: fixture_owner
       POSTGRES_PASSWORD: local-fixture-only
       TZ: UTC
+    # Assign a host port bound to loopback.
     ports:
       - "127.0.0.1::5432"
     volumes:
@@ -21,6 +22,7 @@ services:
     image: sql-migration-verifier-worker:local
     init: true
     hostname: localhost
+    # Give Spark a read-only root filesystem and a bounded writable /tmp.
     network_mode: none
     read_only: true
     cap_drop: [ALL]

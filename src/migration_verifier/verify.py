@@ -42,6 +42,7 @@ class Runtime:
             self.worker.close()
 
     def target(self, sql: str, fixture_id: str, cap: int) -> dict[str, Any]:
+        # Start a worker on the first target query or after the previous worker closes.
         if self.worker is None or self.worker.process is None:
             self.worker = SparkWorker()
             self.worker.__enter__()
@@ -50,6 +51,7 @@ class Runtime:
 
 
 def provenance() -> dict[str, Any]:
+    # Read the checkout revision and whether it has uncommitted changes.
     git = ["git", "-C", str(ROOT)]
     commit = subprocess.run([*git, "rev-parse", "HEAD"], capture_output=True, text=True, timeout=5)
     status = subprocess.run(
@@ -84,6 +86,7 @@ def provenance() -> dict[str, Any]:
 def source_check(
     runtime: Runtime, case: Case, fixture_id: str, sql: str
 ) -> tuple[Result, dict[str, Any]]:
+    # Pair the expected rows with the contract's output schema.
     oracle = Result(case.contract.shape, expected(case.case_id, fixture_id))
     actual = postgres_query(runtime.port, fixture_id, sql, case.row_cap)
     return oracle, compare(oracle, actual, case.contract)
@@ -94,6 +97,7 @@ def check_target(
 ) -> dict[str, Any]:
     start = monotonic()
     document: dict[str, Any] = {"fixture": fixture_id, "sql_hash": digest(sql)}
+    # Run the target SQL policy before passing the query to the worker.
     try:
         checked = gate(sql, case, "spark")
         document["policy"] = "ALLOWED"
@@ -117,6 +121,7 @@ def check_target(
             "detail": result.get("error"),
             "complete": False,
         }
+    # Map the Spark response to the same column and row format as PostgreSQL.
     diff = compare(oracle, spark_result(result), case.contract)
     return {
         **document,
@@ -136,6 +141,7 @@ def verify(
     initial_sql: str | None = None,
     source_sql: str | None = None,
 ) -> dict[str, Any]:
+    # Use the first fixture for repair attempts and the remaining fixtures for the final candidate.
     requested = case.fixtures if fixture_ids is None else fixture_ids
     repair_fixture = requested[0]
     targets: list[dict[str, Any]] = []
@@ -147,6 +153,7 @@ def verify(
     source = case.source if source_sql is None else source_sql
 
     def result(verdict: str, reason: str) -> dict[str, Any]:
+        # Mark fixtures with no completed Spark comparison as skipped.
         failed_fixtures = {target["fixture"] for target in targets if target.get("complete")}
         return {
             "version": 1,
@@ -182,6 +189,7 @@ def verify(
             ),
         }
 
+    # Stop before translation if the source query is blocked or its rows differ from the oracle.
     try:
         parsed = gate(source, case, "postgres")
         oracle, comparison = source_check(runtime, case, repair_fixture, source)
@@ -191,6 +199,7 @@ def verify(
     if not comparison["matched"]:
         return result("ERROR", "SOURCE_ORACLE_DIFF")
 
+    # Use the supplied challenge SQL or translate the parsed PostgreSQL query.
     try:
         baseline = initial_sql if initial_sql is not None else translate(parsed)
         targets.append(check_target(runtime, case, repair_fixture, baseline, oracle))
@@ -202,7 +211,7 @@ def verify(
         final = baseline
     current_sql = baseline
     for attempt in range(1, 3) if mode in {"recorded", "live"} and final is None else ():
-        # The repair endpoint is called before loading either held-out fixture.
+        # Send the allowed table definitions and diagnostics from the first fixture.
         context = {
             "source_sql": source,
             "purpose": case.purpose,
@@ -221,12 +230,14 @@ def verify(
             final = current_sql
             break
     if final is None:
+        # Use the most recent row mismatch if the attempts never produced a passing query.
         mismatch = next(
             (target for target in reversed(targets) if target["verdict"] == "MISMATCH"), None
         )
         outcome = mismatch or targets[-1]
         return result(outcome["verdict"], outcome["reason"])
 
+    # Run the selected SQL unchanged on the remaining fixtures.
     for fixture_id in requested[1:]:
         try:
             oracle, comparison = source_check(runtime, case, fixture_id, source)
@@ -236,6 +247,7 @@ def verify(
         if not comparison["matched"]:
             return result("ERROR", "SOURCE_ORACLE_DIFF")
         targets.append(check_target(runtime, case, fixture_id, final, oracle))
+    # Include the passing repair attempt and the checks on the remaining fixtures.
     outcomes = {entry["verdict"] for entry in targets[-len(requested) :]}
     if "MISMATCH" in outcomes:
         return result("MISMATCH", "HELD_OUT_ORACLE_DIFF")

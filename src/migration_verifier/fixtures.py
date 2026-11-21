@@ -59,6 +59,7 @@ def fixture_rows(name: str) -> dict[str, list[list[Any]]]:
     if name not in (*FIXTURES, "row_limit"):
         raise ValueError(f"Unknown fixture ID {name!r}.")
     base: dict[str, list[list[Any]]] = json.loads((ROOT / "fixtures/base.json").read_bytes())
+    # Build each variant from a fresh copy of the base rows.
     rows = deepcopy(base)
     if name == "late":
         rows["captures"].append(["C8", "A2", "2026-01-08T00:00:00.000001+00:00", "2.00"])
@@ -81,6 +82,7 @@ def fixture_rows(name: str) -> dict[str, list[list[Any]]]:
 
 
 def packets(name: str) -> dict[str, Any]:
+    # Attach column names, types and nullability to each table's rows.
     rows = fixture_rows(name)
     return {
         table: {
@@ -99,6 +101,7 @@ def check_manifest() -> dict[str, Any]:
     datasets: dict[str, Any] = manifest["datasets"]
     if manifest["version"] != 1 or datasets.keys() != {*FIXTURES, "row_limit"}:
         raise EngineError("The fixture manifest does not declare the expected datasets.")
+    # Recompute each fixture's row counts and packet hash.
     for fixture_id, expected in datasets.items():
         counts = {table: len(rows) for table, rows in fixture_rows(fixture_id).items()}
         if counts != expected["rows"] or digest(packets(fixture_id)) != expected["digest"]:
@@ -118,6 +121,7 @@ def seed_postgres(port: int) -> dict[str, Any]:
         version = cursor.fetchone()
         if version != ("170009", "UTC"):
             raise EngineError(f"Expected PostgreSQL 17.9 on UTC. Received {version!r}.")
+        # Create the separate reader role and set its database permissions and defaults.
         cursor.execute("""DO $$ BEGIN
           IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'migration_reader') THEN
             CREATE ROLE migration_reader LOGIN PASSWORD 'local-reader-only' NOINHERIT;
@@ -129,6 +133,7 @@ def seed_postgres(port: int) -> dict[str, Any]:
         cursor.execute("ALTER ROLE migration_reader SET default_transaction_read_only = on")
         cursor.execute("ALTER ROLE migration_reader SET statement_timeout = '5s'")
         cursor.execute("ALTER ROLE migration_reader SET timezone = 'UTC'")
+        # Load every fixture into its own schema and grant the reader access to its tables.
         for fixture_id in (*FIXTURES, "row_limit"):
             schema = sql.Identifier(f"fixture_{fixture_id}")
             cursor.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(schema))

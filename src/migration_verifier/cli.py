@@ -14,6 +14,7 @@ from migration_verifier.verify import EXIT_CODES, Runtime, provenance, verify
 
 def bootstrap() -> int:
     metadata = seed_postgres(postgres_port())
+    # Run a count against the repair fixture and capture the worker's version record.
     with SparkWorker() as worker:
         baseline = worker.query(
             "SELECT COUNT(*) AS authorisations FROM authorisations", packets("repair"), 10
@@ -49,6 +50,7 @@ def main() -> int:
     try:
         if args.command == "bootstrap":
             return bootstrap()
+        # Share one runtime across the selected command and close its worker on exit.
         with Runtime() as runtime:
             if args.command == "demo":
                 return 0 if demo(runtime, args.out) else 1

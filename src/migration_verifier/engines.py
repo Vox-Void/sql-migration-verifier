@@ -15,6 +15,7 @@ from migration_verifier.compare import Result
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = 1
+# Map engine-specific column types to the names used in the case contracts.
 POSTGRES_TYPES = {
     16: "boolean",
     20: "integer",
@@ -72,6 +73,7 @@ def postgres_query(port: int, fixture_id: str, query: str, cap: int) -> Result:
         source_connection(port) as connection,
         connection.cursor(name="migration_result") as cursor,
     ):
+        # Set a read-only transaction and select the schema for this fixture.
         connection.execute("SET TRANSACTION READ ONLY")
         connection.execute("SET LOCAL statement_timeout = '5s'")
         connection.execute("SET LOCAL timezone = 'UTC'")
@@ -81,6 +83,7 @@ def postgres_query(port: int, fixture_id: str, query: str, cap: int) -> Result:
             )
         )
         cursor.execute(query)
+        # Fetch one extra row and reject the result if it crosses the cap.
         rows = cursor.fetchmany(cap + 1)
         if len(rows) > cap:
             raise EngineError("SOURCE_ROW_LIMIT")
@@ -130,11 +133,13 @@ class SparkWorker:
         assert stdout is not None
 
         def receive() -> None:
+            # Queue each line from stdout, then queue an empty string at EOF.
             for fragment in stdout:
                 self.records.put(fragment)
             self.records.put("")
 
         Thread(target=receive, daemon=True).start()
+        # Read the worker's startup record and check the reported Spark version.
         try:
             self.info = self.read(60)
             if self.info["status"] != "READY" or self.info["spark"] != "4.0.1":
@@ -151,6 +156,7 @@ class SparkWorker:
         process = self.process
         if process is None:
             return
+        # Close stdin for a normal shutdown and force removal if the worker hangs.
         try:
             if process.stdin is not None:
                 process.stdin.close()
@@ -190,6 +196,7 @@ class SparkWorker:
         if self.process is None or self.process.stdin is None:
             raise EngineError("The Spark worker is unavailable.")
         value = {"version": VERSION, "query": query, "fixture": fixture, "cap": cap}
+        # Send one request line and wait up to 30 seconds for the response.
         try:
             self.process.stdin.write(json.dumps(value) + "\n")
             self.process.stdin.flush()

@@ -14,6 +14,7 @@ ENV JAVA_HOME=/opt/java/openjdk \
     TZ=UTC
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
+# Install the locked worker dependencies and create the Spark user.
 RUN uv sync --locked --only-group worker --python /usr/local/bin/python \
     && groupadd --gid 10001 spark \
     && useradd --uid 10001 --gid 10001 --no-create-home spark

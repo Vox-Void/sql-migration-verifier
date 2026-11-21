@@ -13,6 +13,7 @@ from migration_verifier.verify import Runtime, provenance, verify
 
 
 def challenge(runtime: Runtime, challenge_id: str) -> dict[str, Any]:
+    # Run the challenge SQL against its named fixture and retain the expected verdict.
     spec = json.loads((ROOT / "challenges" / f"{challenge_id}.json").read_bytes())
     outcome = verify(
         runtime,
@@ -36,6 +37,7 @@ def write_json(path: Path, data: object) -> None:
 
 
 def stable_record(row: dict[str, Any]) -> str:
+    # Hash the report record with attempt durations removed.
     content = {key: value for key, value in row.items() if key != "target_attempts"}
     content["target_attempts"] = [
         {key: value for key, value in attempt.items() if key != "duration_ms"}
@@ -46,6 +48,7 @@ def stable_record(row: dict[str, Any]) -> str:
 
 def evaluation(runtime: Runtime, output: Path, mode: str) -> bool:
     output.mkdir(parents=True, exist_ok=True)
+    # Evaluate the twelve cases in both modes and run each challenge once.
     rows = [
         verify(runtime, load_case(case), arm) for arm in ("baseline", mode) for case in CASE_IDS
     ]
@@ -72,6 +75,7 @@ def evaluation(runtime: Runtime, output: Path, mode: str) -> bool:
     ]
     safe = all(row["verdict"] == row["expected_verdict"] for row in challenges)
     metadata = provenance()
+    # Write one record per result with the engine details and stable hash.
     with (output / "results.jsonl").open("w", encoding="utf-8") as stream:
         for row in rows + challenges:
             stream.write(
@@ -118,6 +122,7 @@ def demo(runtime: Runtime, output: Path) -> bool:
     multiplicity = challenge(runtime, "C01")
     escalation = challenge(runtime, "C05")
     drift = challenge(runtime, "C03")
+    # Use the UTC-day challenge query as the first candidate in the recorded repair run.
     repair = verify(runtime, load_case("Q03"), "recorded", initial_sql=drift["candidate_sql"])
     sections = [
         ("Verified capture report", verified),
@@ -131,6 +136,7 @@ def demo(runtime: Runtime, output: Path) -> bool:
         "<title>SQL Migration Verifier</title><style>body{margin:0 auto;max-width:68rem;padding:2rem;font:1rem system-ui;color:#17212b;background:#f3f7fa}section{background:white;border-radius:.7rem;padding:1.3rem;margin:1rem 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#eef3f7;padding:1rem}h1,h2{color:#183958}code{font-family:monospace}</style>",
         "<main><h1>SQL Migration Verifier</h1><p>Synthetic payments results from PostgreSQL and Spark. Review the SQL, fixture scope and differences before adopting a candidate.</p>",
     ]
+    # Escape display values as each review section is added to the HTML.
     for title, row in sections:
         html.extend(
             [

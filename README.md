@@ -4,6 +4,8 @@ Verify that a PostgreSQL reporting query and its Spark SQL candidate agree with 
 
 Watch the [2:39 captioned demo](docs/demo.mp4) for the duplicate-row regression, the local-day repair and the case that stops for review.
 
+The [project guide](docs/project-guide.md) explains how it was built and follows one query through the code.
+
 ## Run it
 
 Use Bash on Linux or WSL2 with Docker, Docker Compose v2 and `uv` 0.13.9. Run these commands from the repository root.

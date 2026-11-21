@@ -12,6 +12,7 @@ from migration_verifier.fixtures import fixture_rows
 
 
 def expected(case_id: str, fixture_id: str) -> list[list[Any]]:
+    # Load the committed repair answers and calculate expectations for the other fixtures.
     if fixture_id == "repair":
         outcomes: dict[str, list[list[Any]]] = json.loads(
             (ROOT / "fixtures/expected-repair.json").read_bytes()
@@ -27,6 +28,7 @@ def reference(case_id: str, fixture_id: str) -> list[list[Any]]:
     events = data["settlement_events"]
     totals: defaultdict[tuple[str, ...], Decimal] = defaultdict(Decimal)
     if case_id in {"Q01", "Q03"}:
+        # Sum captures by merchant, currency and the requested calendar day.
         zones = {merchant: ZoneInfo(zone) for merchant, zone in data["merchants"]}
         for _, auth_id, value, amount in captures:
             _, merchant, _, _, currency, _ = auth_by_id[auth_id]
@@ -38,11 +40,13 @@ def reference(case_id: str, fixture_id: str) -> list[list[Any]]:
             totals[(merchant, currency, day)] += Decimal(amount)
         return [[*key, amount] for key, amount in totals.items()]
     if case_id == "Q02":
+        # Add all refunds for each capture before subtracting them from the capture amount.
         refunds: defaultdict[str, Decimal] = defaultdict(Decimal)
         for _, capture_id, _, amount in data["refunds"]:
             refunds[capture_id] += Decimal(amount)
         return [[cap_id, Decimal(amount) - refunds[cap_id]] for cap_id, _, _, amount in captures]
     if case_id == "Q04":
+        # Return every matching reference and amount, including repeated rows.
         return [[ref, amount] for _, merchant, _, _, ref, amount, _ in events if merchant == "M1"]
     if case_id == "Q05":
         by_merchant: defaultdict[str, list[list[Any]]] = defaultdict(list)
@@ -51,11 +55,13 @@ def reference(case_id: str, fixture_id: str) -> list[list[Any]]:
             by_merchant[merchant].append([merchant, cap_id, value])
         ranked = []
         for merchant in sorted(by_merchant):
+            # Sort newest first and keep capture ID order when timestamps tie.
             by_id = sorted(by_merchant[merchant], key=lambda row: row[1])
             latest = sorted(by_id, key=lambda row: datetime.fromisoformat(row[2]), reverse=True)
             ranked.extend(latest[:3])
         return ranked
     if case_id == "Q06":
+        # Keep the latest event at or before the cutoff for each merchant and reference.
         cutoff = datetime.fromisoformat(data["migration_params"][0][0])
         latest_by_reference: dict[tuple[str, str], tuple[datetime, str, str]] = {}
         for event_id, merchant, _, _, ref, amount, recorded in events:
@@ -74,6 +80,7 @@ def reference(case_id: str, fixture_id: str) -> list[list[Any]]:
             if row[5] == "APPROVED" and auth_id not in captured
         ]
     if case_id == "Q08":
+        # Sum captures by authorisation and round each ratio to four decimal places.
         captured_amount: defaultdict[str, Decimal] = defaultdict(Decimal)
         for _, auth_id, _, amount in captures:
             captured_amount[auth_id] += Decimal(amount)
@@ -90,9 +97,11 @@ def reference(case_id: str, fixture_id: str) -> list[list[Any]]:
             if row[5] == "APPROVED"
         ]
     if case_id == "Q09":
+        # Return a zero count and a null sum when no authorisations are pending.
         selected = [Decimal(row[3]) for row in data["authorisations"] if row[5] == "PENDING"]
         return [[len(selected), sum(selected, Decimal(0)) if selected else None]]
     if case_id == "Q10":
+        # Match the reference against event E8, including when both references are null.
         right = next(row for row in events if row[0] == "E8")
         return [
             [row[0], right[0] if row[4] == right[4] else None]
@@ -102,6 +111,7 @@ def reference(case_id: str, fixture_id: str) -> list[list[Any]]:
     if case_id == "Q11":
         return [[row[4], row[5]] for row in events if row[0] in {"E0", "E1", "E2", "E3"}]
     if case_id == "Q12":
+        # Include the captures at both ends of the one-microsecond window.
         start = datetime.fromisoformat("2026-01-07T21:59:59.999999+00:00")
         finish = datetime.fromisoformat("2026-01-07T22:00:00+00:00")
         return [

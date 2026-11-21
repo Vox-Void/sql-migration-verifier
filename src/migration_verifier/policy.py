@@ -14,6 +14,7 @@ from migration_verifier.engines import ROOT
 from migration_verifier.fixtures import FIXTURES, SCHEMAS
 
 CASE_IDS = tuple(f"Q{index:02}" for index in range(1, 13))
+# These are the SQLGlot node names accepted anywhere in a query.
 SHAPES = frozenset(
     [
         "Add",
@@ -138,6 +139,7 @@ def load_case(case_id: str) -> Case:
     directory = ROOT / "cases" / case_id
     serialized = (directory / "contract.json").read_bytes()
     raw = json.loads(serialized)
+    # Build the expected column, key and sort definitions from the case file.
     contract = Contract(
         tuple(Field(*field) for field in raw["fields"]),
         raw["mode"],
@@ -189,6 +191,7 @@ def gate(query: str, case: Case, dialect: str) -> exp.Expression:
     ):
         raise PolicyError("QUERY_ONLY")
     parsed = expressions[0]
+    # Inspect each parsed node, including expressions inside subqueries.
     for node in parsed.walk():
         if isinstance(node, exp.Func):
             name = node.name.upper() if isinstance(node, exp.Anonymous) else node.sql_name()
@@ -206,6 +209,7 @@ def gate(query: str, case: Case, dialect: str) -> exp.Expression:
             node.parent is not parsed or case.contract.mode != "ordered"
         ):
             raise PolicyError("LIMIT_REQUIRES_TOTAL_ORDER")
+    # Resolve table names in each scope and skip sources backed by another query scope.
     for scope in traverse_scope(parsed):
         for _, source in scope.selected_sources.values():
             if isinstance(source, Scope):
@@ -218,6 +222,7 @@ def gate(query: str, case: Case, dialect: str) -> exp.Expression:
             ):
                 raise PolicyError("RELATION_NOT_ALLOWED")
     if case.contract.mode == "ordered":
+        # Compare the ordered columns, directions and null placement with the contract.
         order = parsed.args.get("order")
         if not isinstance(order, exp.Order):
             raise PolicyError("TOTAL_ORDER_REQUIRED")
@@ -238,6 +243,7 @@ def gate(query: str, case: Case, dialect: str) -> exp.Expression:
 
 
 def translate(checked: exp.Expression) -> str:
+    # Report a translation error when SQLGlot flags an unsupported Spark construct.
     try:
         return checked.sql(dialect="spark", unsupported_level=ErrorLevel.RAISE, pretty=True)
     except UnsupportedError as error:

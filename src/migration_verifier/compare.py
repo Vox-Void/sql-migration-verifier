@@ -48,6 +48,7 @@ class Contract:
 
 
 def normalize(raw: Any, field: Field) -> Atom:
+    # Represent a database null with its own tag.
     if raw is None:
         if not field.nullable:
             raise ShapeError(f"{field.name} cannot be null")
@@ -63,6 +64,7 @@ def normalize(raw: Any, field: Field) -> Atom:
             if type(value) is date:
                 return (kind, value.isoformat())
         if kind == "instant":
+            # Convert timestamps with an offset into UTC strings with microseconds.
             value = datetime.fromisoformat(raw) if isinstance(raw, str) else raw
             if isinstance(value, datetime) and value.utcoffset() is not None:
                 return (kind, value.astimezone(UTC).isoformat(timespec="microseconds"))
@@ -70,6 +72,7 @@ def normalize(raw: Any, field: Field) -> Atom:
         if decimal and isinstance(raw, (str, Decimal)):
             precision, scale = map(int, decimal.groups())
             amount = Decimal(raw)
+            # Apply the declared scale and check that the amount stayed exact.
             with localcontext() as context:
                 context.prec = precision + 2
                 normalized = amount.quantize(Decimal(1).scaleb(-scale))
@@ -85,6 +88,7 @@ def normalize(raw: Any, field: Field) -> Atom:
 
 
 def normalized(result: Result, contract: Contract) -> list[Row]:
+    # Check result columns even when the query returns no rows.
     if result.columns != contract.shape:
         raise ShapeError("The ordered columns or logical types differ from the contract")
     if any(len(row) != len(contract.fields) for row in result.rows):
@@ -96,6 +100,7 @@ def normalized(result: Result, contract: Contract) -> list[Row]:
 
 
 def keyed(rows: list[Row], indexes: tuple[int, ...]) -> dict[Row, Row]:
+    # Index each row by its contract key and reject repeated or null keys.
     indexed = {}
     for row in rows:
         key = tuple(row[index] for index in indexes)
@@ -115,6 +120,7 @@ def compare(expected: Result, actual: Result, contract: Contract) -> dict[str, A
         left = normalized(expected, contract)
         right = normalized(actual, contract)
         if contract.mode == "keyed":
+            # Compare column values for keys found on both sides.
             labels = [field.name for field in contract.fields]
             indexes = tuple(labels.index(name) for name in contract.keys)
             expected_keys, actual_keys = keyed(left, indexes), keyed(right, indexes)
@@ -139,6 +145,7 @@ def compare(expected: Result, actual: Result, contract: Contract) -> dict[str, A
                 examples={"missing": missing[:10], "extra": extra[:10], "changed": changed[:10]},
             )
         elif contract.mode == "bag":
+            # Count copies of each complete row on both sides.
             expected_rows, actual_rows = Counter(left), Counter(right)
             missing_rows, extra_rows = expected_rows - actual_rows, actual_rows - expected_rows
             report.update(
@@ -151,6 +158,7 @@ def compare(expected: Result, actual: Result, contract: Contract) -> dict[str, A
                 },
             )
         elif contract.mode == "ordered":
+            # Compare rows at matching positions and count unmatched rows at the end.
             differences = [
                 (index, before, after)
                 for index, (before, after) in enumerate(zip(left, right, strict=False))

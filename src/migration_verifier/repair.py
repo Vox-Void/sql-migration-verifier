@@ -21,6 +21,7 @@ class Suggestion:
 
 def propose(case_id: str, context: dict[str, Any], mode: str, attempt: int) -> Suggestion:
     if mode == "recorded":
+        # Read the saved repair for this case on the first attempt.
         path = ROOT / "repairs" / f"{case_id}.json"
         if path.is_file() and attempt == 1:
             record = json.loads(path.read_bytes())
@@ -42,6 +43,7 @@ def propose(case_id: str, context: dict[str, Any], mode: str, attempt: int) -> S
         "rationale": {"type": "string"},
         "assumptions": {"type": "array", "items": {"type": "string"}},
     }
+    # Request a structured suggestion with a bounded input and output.
     request = Request(
         "https://api.openai.com/v1/responses",
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
@@ -83,6 +85,7 @@ def propose(case_id: str, context: dict[str, Any], mode: str, attempt: int) -> S
         ]
         if document["status"] != "completed" or len(texts) != 1:
             return Suggestion(None, "The provider returned an incomplete response.", [], None)
+        # Validate the suggestion fields and record token usage when present.
         record = json.loads(texts[0])
         sql = record["candidate_sql"]
         rationale = record["rationale"]
