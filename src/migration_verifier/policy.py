@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import sqlglot
 from sqlglot import exp
-from sqlglot.errors import ErrorLevel, ParseError, UnsupportedError
+from sqlglot.errors import ErrorLevel, OptimizeError, ParseError, UnsupportedError
 from sqlglot.optimizer.scope import Scope, traverse_scope
 
 from migration_verifier.compare import Contract, Field, Order
@@ -210,17 +210,20 @@ def gate(query: str, case: Case, dialect: str) -> exp.Expression:
         ):
             raise PolicyError("LIMIT_REQUIRES_TOTAL_ORDER")
     # Resolve table names in each scope and skip sources backed by another query scope.
-    for scope in traverse_scope(parsed):
-        for _, source in scope.selected_sources.values():
-            if isinstance(source, Scope):
-                continue
-            if (
-                not isinstance(source, exp.Table)
-                or source.catalog
-                or source.db
-                or source.name not in case.relations
-            ):
-                raise PolicyError("RELATION_NOT_ALLOWED")
+    try:
+        for scope in traverse_scope(parsed):
+            for _, source in scope.selected_sources.values():
+                if isinstance(source, Scope):
+                    continue
+                if (
+                    not isinstance(source, exp.Table)
+                    or source.catalog
+                    or source.db
+                    or source.name not in case.relations
+                ):
+                    raise PolicyError("RELATION_NOT_ALLOWED")
+    except OptimizeError as error:
+        raise PolicyError("INVALID_SQL_SCOPE") from error
     if case.contract.mode == "ordered":
         # Compare the ordered columns, directions and null placement with the contract.
         order = parsed.args.get("order")

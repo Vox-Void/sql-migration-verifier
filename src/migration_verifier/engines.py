@@ -1,7 +1,9 @@
 """Control the source connection and the isolated Spark worker."""
 
 import json
+import re
 import subprocess
+from contextlib import suppress
 from pathlib import Path
 from queue import Empty, Queue
 from threading import Thread
@@ -45,16 +47,24 @@ class EngineError(RuntimeError):
 
 
 def postgres_port() -> int:
-    command = subprocess.run(
-        ["docker", "compose", "port", "postgres", "5432"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
-    if command.returncode or not command.stdout.strip().startswith("127.0.0.1:"):
+    try:
+        command = subprocess.run(
+            ["docker", "compose", "port", "postgres", "5432"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except FileNotFoundError as error:
+        raise EngineError(
+            "Docker is unavailable. Install Docker and run ./scripts/dev bootstrap."
+        ) from error
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise EngineError("Could not check PostgreSQL. Run ./scripts/dev bootstrap.") from error
+    binding = re.fullmatch(r"127\.0\.0\.1:([0-9]{1,5})", command.stdout.strip())
+    if command.returncode or binding is None or not 1 <= int(binding[1]) <= 65535:
         raise EngineError("PostgreSQL is unavailable. Run ./scripts/dev bootstrap.")
-    return int(command.stdout.strip().rsplit(":", 1)[1])
+    return int(binding[1])
 
 
 def source_connection(port: int, *, owner: bool = False) -> psycopg.Connection[Any]:
@@ -142,9 +152,9 @@ class SparkWorker:
         # Read the worker's startup record and check the reported Spark version.
         try:
             self.info = self.read(60)
-            if self.info["status"] != "READY" or self.info["spark"] != "4.0.1":
+            if self.info.get("status") != "READY" or self.info.get("spark") != "4.0.1":
                 raise EngineError("Expected the pinned Spark 4.0.1 worker.")
-        except (EngineError, KeyError):
+        except EngineError:
             self.close()
             raise
         return self
@@ -162,16 +172,19 @@ class SparkWorker:
                 process.stdin.close()
             process.wait(timeout=5)
         except (OSError, subprocess.TimeoutExpired):
-            subprocess.run(
-                ["docker", "rm", "-f", self.name],
-                cwd=ROOT,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-                timeout=10,
-            )
-            process.kill()
-            process.wait(timeout=5)
+            with suppress(OSError, subprocess.TimeoutExpired):
+                subprocess.run(
+                    ["docker", "rm", "-f", self.name],
+                    cwd=ROOT,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                    timeout=10,
+                )
+            if process.poll() is None:
+                with suppress(OSError, subprocess.TimeoutExpired):
+                    process.kill()
+                    process.wait(timeout=5)
         finally:
             if process.stdout is not None:
                 process.stdout.close()
@@ -188,7 +201,10 @@ class SparkWorker:
             document: dict[str, Any] = json.loads(record)
         except ValueError as error:
             raise EngineError("Spark worker returned an invalid record.") from error
-        if document.get("version") != VERSION:
+        if not isinstance(document, dict):
+            raise EngineError("Spark worker returned an invalid record.")
+        version = document.get("version")
+        if type(version) is not int or version != VERSION:
             raise EngineError("Spark worker protocol version mismatch.")
         return document
 
@@ -200,7 +216,27 @@ class SparkWorker:
         try:
             self.process.stdin.write(json.dumps(value) + "\n")
             self.process.stdin.flush()
-            return self.read(30)
+            reply = self.read(30)
+            status = reply.get("status")
+            if status not in ("OK", "ROW_LIMIT", "QUERY_ERROR"):
+                raise EngineError("Spark worker returned an invalid query status.")
+            if status == "OK":
+                columns = reply.get("columns")
+                rows = reply.get("rows")
+                if (
+                    not isinstance(columns, list)
+                    or not all(
+                        isinstance(column, dict)
+                        and isinstance(column.get("name"), str)
+                        and isinstance(column.get("type"), str)
+                        for column in columns
+                    )
+                    or not isinstance(rows, list)
+                    or len(rows) > cap
+                    or not all(isinstance(row, list) for row in rows)
+                ):
+                    raise EngineError("Spark worker returned an invalid query result.")
+            return reply
         except (OSError, EngineError):
             self.close()
             raise

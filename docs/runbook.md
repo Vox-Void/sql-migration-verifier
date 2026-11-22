@@ -10,6 +10,8 @@ After bootstrap, run the verifier with a named case and a result file.
 
 Read the source comparison first. Check the fixture hashes, output types and comparison mode. Review the candidate SQL and its diff. Use the attempt records to see how far an unsupported or blocked candidate progressed.
 
+The report includes the Git revision and working tree status when Git can read them. Unavailable checkout metadata is recorded as `null`.
+
 | Exit | Verdict | Meaning |
 | --- | --- | --- |
 | 0 | `VERIFIED` | Source and target match all named independent expectations. |

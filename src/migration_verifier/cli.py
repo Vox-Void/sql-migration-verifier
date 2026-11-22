@@ -5,6 +5,8 @@ import json
 import os
 from pathlib import Path
 
+import psycopg
+
 from migration_verifier.engines import EngineError, SparkWorker, postgres_port
 from migration_verifier.fixtures import packets, seed_postgres
 from migration_verifier.policy import CASE_IDS, load_case
@@ -13,7 +15,12 @@ from migration_verifier.verify import EXIT_CODES, Runtime, provenance, verify
 
 
 def bootstrap() -> int:
-    metadata = seed_postgres(postgres_port())
+    try:
+        metadata = seed_postgres(postgres_port())
+    except psycopg.Error as error:
+        raise EngineError(
+            "PostgreSQL fixture setup failed. Check the local service and retry."
+        ) from error
     # Run a count against the repair fixture and capture the worker's version record.
     with SparkWorker() as worker:
         baseline = worker.query(

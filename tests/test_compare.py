@@ -47,6 +47,10 @@ def test_instant_timezone_and_precision():
     )
     with pytest.raises(ShapeError):
         normalize("2026-01-07T22:00:00", field)
+    with pytest.raises(ShapeError, match="exceeds microsecond precision"):
+        normalize("2026-01-07T21:59:59.9999999Z", field)
+    with pytest.raises(ShapeError):
+        normalize("0001-01-01T00:00:00+01:00", field)
 
 
 def test_empty_result_preserves_the_schema():

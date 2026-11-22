@@ -35,6 +35,13 @@ def test_target_policy_rejects_out_of_scope_sql(query):
         gate(query, load_case("Q01"), "spark")
 
 
+@pytest.mark.parametrize("dialect", ["postgres", "spark"])
+def test_repeated_alias_is_a_policy_outcome(dialect):
+    query = "SELECT c.capture_id FROM captures c JOIN captures c ON 1 = 1"
+    with pytest.raises(PolicyError, match="INVALID_SQL_SCOPE"):
+        gate(query, load_case("Q01"), dialect)
+
+
 def test_unsupported_translation_fails_before_returning_sql(monkeypatch):
     statement = gate(load_case("Q01").source, load_case("Q01"), "postgres")
 

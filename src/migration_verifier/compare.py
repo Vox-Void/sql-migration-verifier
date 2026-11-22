@@ -58,6 +58,8 @@ def normalize(raw: Any, field: Field) -> Atom:
         return (kind, raw)
     if (kind == "integer" and type(raw) is int) or (kind == "boolean" and type(raw) is bool):
         return (kind, raw)
+    if kind == "instant" and isinstance(raw, str) and re.search(r"[.,]\d{7,}", raw):
+        raise ShapeError(f"{field.name} exceeds microsecond precision")
     try:
         if kind == "date":
             value = date.fromisoformat(raw) if isinstance(raw, str) else raw
@@ -82,7 +84,7 @@ def normalize(raw: Any, field: Field) -> Atom:
                 and normalized.adjusted() < precision - scale
             ):
                 return (kind, format(normalized if normalized else abs(normalized), "f"))
-    except (ValueError, DecimalException) as error:
+    except (ValueError, DecimalException, OverflowError) as error:
         raise ShapeError(f"{field.name} is invalid for {kind}") from error
     raise ShapeError(f"{field.name} is invalid for {kind}")
 

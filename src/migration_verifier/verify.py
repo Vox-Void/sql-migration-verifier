@@ -3,6 +3,7 @@
 import json
 import os
 import subprocess
+from contextlib import suppress
 from dataclasses import asdict
 from difflib import unified_diff
 from time import monotonic
@@ -53,10 +54,19 @@ class Runtime:
 def provenance() -> dict[str, Any]:
     # Read the checkout revision and whether it has uncommitted changes.
     git = ["git", "-C", str(ROOT)]
-    commit = subprocess.run([*git, "rev-parse", "HEAD"], capture_output=True, text=True, timeout=5)
-    status = subprocess.run(
-        [*git, "status", "--porcelain"], capture_output=True, text=True, timeout=5
-    )
+    revision = None
+    dirty = None
+    with suppress(OSError, subprocess.TimeoutExpired):
+        commit = subprocess.run(
+            [*git, "rev-parse", "HEAD"], capture_output=True, text=True, timeout=5
+        )
+        if commit.returncode == 0:
+            revision = commit.stdout.strip() or None
+        status = subprocess.run(
+            [*git, "status", "--porcelain"], capture_output=True, text=True, timeout=5
+        )
+        if status.returncode == 0:
+            dirty = bool(status.stdout.strip())
     postgres = (
         (ROOT / "compose.yaml")
         .read_text(encoding="utf-8")
@@ -78,8 +88,8 @@ def provenance() -> dict[str, Any]:
         "spark_timestamp_type": "TIMESTAMP_LTZ",
         "postgres_image": postgres,
         "worker_base_images": images,
-        "revision": commit.stdout.strip() or None,
-        "dirty": bool(status.stdout.strip()),
+        "revision": revision,
+        "dirty": dirty,
     }
 
 
