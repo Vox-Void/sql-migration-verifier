@@ -25,4 +25,4 @@ ignore = ["E501"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["src/migration_verifier"]
+files = ["src"]

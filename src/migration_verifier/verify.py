@@ -162,9 +162,10 @@ def verify(
     executions = runtime.executions
     source = case.source if source_sql is None else source_sql
 
-    def result(verdict: str, reason: str) -> dict[str, Any]:
+    def result(verdict: str, reason: str, *, attempted_sql: str | None = None) -> dict[str, Any]:
+        candidate_sql = final if final is not None else attempted_sql
         # Mark fixtures with no completed Spark comparison as skipped.
-        failed_fixtures = {target["fixture"] for target in targets if target.get("complete")}
+        compared_fixtures = {target["fixture"] for target in targets if target.get("complete")}
         return {
             "version": 1,
             "case_id": case.case_id,
@@ -183,16 +184,16 @@ def verify(
             "skipped": {
                 fixture: "No complete target result"
                 for fixture in requested
-                if fixture not in failed_fixtures
+                if fixture not in compared_fixtures
             },
             "repairs": prompts,
             "prompt_version": PROMPT_VERSION,
             "model": os.environ.get("MIGRATION_MODEL", "gpt-6.2-sol") if mode == "live" else None,
-            "candidate_sql": final or baseline,
+            "candidate_sql": candidate_sql,
             "sql_diff": "".join(
                 unified_diff(
                     source.splitlines(True),
-                    (final or baseline or "").splitlines(True),
+                    (candidate_sql or "").splitlines(True),
                     "postgres",
                     "spark",
                 )
@@ -209,10 +210,19 @@ def verify(
     if not comparison["matched"]:
         return result("ERROR", "SOURCE_ORACLE_DIFF")
 
+    latest_mismatch: tuple[dict[str, Any], str] | None = None
+
+    def record_candidate_check(candidate_sql: str) -> None:
+        nonlocal latest_mismatch
+        target = check_target(runtime, case, repair_fixture, candidate_sql, oracle)
+        targets.append(target)
+        if target["verdict"] == "MISMATCH":
+            latest_mismatch = target, candidate_sql
+
     # Use the supplied challenge SQL or translate the parsed PostgreSQL query.
     try:
         baseline = initial_sql if initial_sql is not None else translate(parsed)
-        targets.append(check_target(runtime, case, repair_fixture, baseline, oracle))
+        record_candidate_check(baseline)
     except PolicyError as error:
         targets.append(
             {"fixture": repair_fixture, "verdict": "REVIEW_REQUIRED", "reason": str(error)}
@@ -235,17 +245,14 @@ def verify(
         if suggestion.candidate_sql is None:
             break
         current_sql = suggestion.candidate_sql
-        targets.append(check_target(runtime, case, repair_fixture, current_sql, oracle))
+        record_candidate_check(current_sql)
         if targets[-1]["verdict"] == "VERIFIED":
             final = current_sql
             break
     if final is None:
         # Use the most recent row mismatch if the attempts never produced a passing query.
-        mismatch = next(
-            (target for target in reversed(targets) if target["verdict"] == "MISMATCH"), None
-        )
-        outcome = mismatch or targets[-1]
-        return result(outcome["verdict"], outcome["reason"])
+        outcome, attempted_sql = latest_mismatch or (targets[-1], current_sql)
+        return result(outcome["verdict"], outcome["reason"], attempted_sql=attempted_sql)
 
     # Run the selected SQL unchanged on the remaining fixtures.
     for fixture_id in requested[1:]:

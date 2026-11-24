@@ -70,3 +70,15 @@ def test_source_role_is_restricted(runtime):
         ).fetchone()
         assert settings == ("on",)
         assert temp_grant == (False,)
+
+
+def test_nonfinite_result_does_not_stop_spark_worker(runtime):
+    reply = runtime.target("SELECT CAST('NaN' AS DOUBLE) AS measure", "repair", 2)
+    assert reply == {"version": 1, "status": "QUERY_ERROR", "error": "INVALID_RESULT"}
+    assert runtime.worker is not None
+    process = runtime.worker.process
+    assert process is not None and process.poll() is None
+
+    next_query = runtime.target("SELECT 1 AS measure", "repair", 2)
+    assert next_query["status"] == "OK" and next_query["rows"] == [[1]]
+    assert runtime.worker.process is process

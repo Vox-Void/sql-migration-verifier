@@ -25,7 +25,7 @@ case "$command" in
     # Check source formatting, lint and types before running pytest.
     uv run --locked ruff format --check src tests
     uv run --locked ruff check src tests
-    uv run --locked mypy
+    uv run --locked --group worker mypy
     uv run --locked pytest "$@"
     ;;
   demo|eval|verify)

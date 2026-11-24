@@ -4,11 +4,12 @@ import json
 import os
 import re
 import sys
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
-from py4j.protocol import Py4JJavaError
+from py4j.protocol import Py4JJavaError  # type: ignore[import-untyped]
 from pyspark.errors import PySparkException
 from pyspark.sql import SparkSession
 from pyspark.sql.types import (
@@ -35,7 +36,11 @@ def load_rows(session: SparkSession, fixture: dict[str, Any]) -> None:
         "date": DateType(),
         "instant": TimestampType(),
     }
-    decode = {"decimal": Decimal, "date": date.fromisoformat, "instant": datetime.fromisoformat}
+    decode: dict[str, Callable[[str], object]] = {
+        "decimal": Decimal,
+        "date": date.fromisoformat,
+        "instant": datetime.fromisoformat,
+    }
     for table, source in fixture.items():
         columns = source["columns"]
         schema = StructType(
@@ -75,7 +80,7 @@ def issue(error: Exception) -> str:
             return condition
     if isinstance(error, Py4JJavaError):
         name = error.java_exception.getClass().getSimpleName()
-        if re.fullmatch(r"[A-Za-z0-9_]{1,80}", name):
+        if isinstance(name, str) and re.fullmatch(r"[A-Za-z0-9_]{1,80}", name):
             return name
     return type(error).__name__
 
@@ -103,6 +108,9 @@ def main() -> None:
         try:
             if spark.version != "4.0.1":
                 raise RuntimeError(f"Expected Spark 4.0.1. Found {spark.version}.")
+            jvm = spark.sparkContext._jvm
+            if jvm is None:
+                raise RuntimeError("Spark did not start a Java gateway.")
             # Send the version and timezone in the startup record.
             print(
                 json.dumps(
@@ -110,9 +118,7 @@ def main() -> None:
                         "version": VERSION,
                         "status": "READY",
                         "spark": spark.version,
-                        "java": spark.sparkContext._jvm.java.lang.System.getProperty(
-                            "java.version"
-                        ),
+                        "java": jvm.java.lang.System.getProperty("java.version"),
                         "timezone": "UTC",
                     }
                 ),
@@ -123,6 +129,7 @@ def main() -> None:
                 request = json.loads(line)
                 if request["version"] != VERSION:
                     raise ValueError("Unsupported worker protocol version.")
+                response: dict[str, Any]
                 try:
                     # Load temporary views and execute the request inside a fresh SQL session.
                     active = spark.newSession()
@@ -144,11 +151,14 @@ def main() -> None:
                     )
                 except Exception as error:
                     response = {"status": "QUERY_ERROR", "error": issue(error)}
-                print(
-                    json.dumps({"version": VERSION, **response}, allow_nan=False),
-                    file=protocol,
-                    flush=True,
-                )
+                try:
+                    record = json.dumps({"version": VERSION, **response}, allow_nan=False)
+                except (TypeError, ValueError):
+                    # A result outside the wire format must leave the worker ready for another query.
+                    record = json.dumps(
+                        {"version": VERSION, "status": "QUERY_ERROR", "error": "INVALID_RESULT"}
+                    )
+                print(record, file=protocol, flush=True)
         finally:
             spark.stop()
 
